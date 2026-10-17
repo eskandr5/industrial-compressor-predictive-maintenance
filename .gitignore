@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.env
+flows_cred.json
+*.csv
+!data/data.csv
+!data/ttf.csv
+*.parquet
+*.pkl
+!models/xgboost_model_v3.pkl
+!models/xgboost_scaler_v3.pkl
+!models/scaler_multiclass_ttf_240min_enhanced_focused_tuned.pkl
+*.joblib
+*.db
+*.sqlite
+*.sqlite3
+!data/enhanced_compressor_data_v4_modified_power_noise.csv

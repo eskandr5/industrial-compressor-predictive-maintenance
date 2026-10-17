@@ -1,0 +1,2467 @@
+[
+  {
+    "id": "293b64c25a629bf5",
+    "type": "tab",
+    "label": "Compressor Dashboard - Enhanced V2",
+    "disabled": false,
+    "info": "Enhanced dashboard with reorganized layout, SVG visualization, clock, controls, and improved status indicators."
+  },
+  {
+    "id": "8517c20c59591243",
+    "type": "mqtt in",
+    "z": "293b64c25a629bf5",
+    "name": "Receive MQTT Data",
+    "topic": "compressor/data",
+    "qos": "2",
+    "datatype": "json",
+    "broker": "6d238b1133e531ec",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 190,
+    "y": 720,
+    "wires": [
+      [
+        "47f07c03406437f2"
+      ]
+    ]
+  },
+  {
+    "id": "fee1326a256e8d2a",
+    "type": "status",
+    "z": "293b64c25a629bf5",
+    "name": "MQTT Status",
+    "scope": [
+      "8517c20c59591243"
+    ],
+    "x": 110,
+    "y": 60,
+    "wires": [
+      [
+        "169f55ae3bfa3866"
+      ]
+    ]
+  },
+  {
+    "id": "169f55ae3bfa3866",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Format MQTT Status",
+    "func": "let status = msg.status;\nif (status.text.includes('connected')) {\n    msg.payload = true; // Connected\n} else {\n    msg.payload = false; // Disconnected or other state\n}\n// Store status for SVG maybe?\nflow.set(\"mqtt_connected\", msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "// Set initial status on deploy\nflow.set(\"mqtt_connected\", false);",
+    "finalize": "",
+    "libs": [],
+    "x": 330,
+    "y": 60,
+    "wires": [
+      [
+        "62b429fc887ff038"
+      ]
+    ]
+  },
+  {
+    "id": "47f07c03406437f2",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Validate & Distribute Data",
+    "func": "// Basic validation (expand as needed)\nif (msg.payload && \n    typeof msg.payload.temperature_c === 'number' && \n    typeof msg.payload.vibration_rms === 'number' &&\n    typeof msg.payload.pressure_bar === 'number' &&\n    typeof msg.payload.power_kw === 'number') {\n    \n    // Add timestamp\n    const now = new Date();\n    msg.payload.timestamp = now.toISOString();\n    \n    // Store the validated payload for other branches & manual trigger\n    context.set(\"lastValidData\", msg.payload);\n    \n    // Prepare outputs for different paths\n    const dataForPrediction = JSON.stringify(msg.payload);\n    const tempData = { payload: msg.payload.temperature_c };\n    const vibData = { payload: msg.payload.vibration_rms };\n    const pressData = { payload: msg.payload.pressure_bar };\n    const powerData = { payload: msg.payload.power_kw };\n    const statusCheckData = { payload: msg.payload }; // Pass full payload for status checks\n    const svgDataInput = { payload: msg.payload }; // Pass for SVG data prep\n    const lastTimeData = { payload: now }; // Just the timestamp\n    \n    // Output: \n    // 1: Prediction Path (Stringified JSON)\n    // 2: Temperature Path\n    // 3: Vibration Path\n    // 4: Pressure Path\n    // 5: Power Path\n    // 6: Status Check Switches Path\n    // 7: SVG Data Preparation Path\n    // 8: Last Data Timestamp Path\n    \n    return [ \n        { payload: dataForPrediction }, \n        tempData,\n        vibData,\n        pressData,\n        powerData,\n        statusCheckData, \n        svgDataInput,\n        lastTimeData\n    ];\n    \n} else {\n    node.warn(\"Received invalid MQTT payload structure: \" + JSON.stringify(msg.payload));\n    context.set(\"lastValidData\", null); // Clear last data on invalid input\n    return null; // Stop flow for invalid data\n}",
+    "outputs": 8,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "// Initialize last data on start\ncontext.set(\"lastValidData\", null);",
+    "finalize": "",
+    "libs": [],
+    "x": 450,
+    "y": 720,
+    "wires": [
+      [],
+      [
+        "290947e9d0bc3784",
+        "31c646a72a7f6c5c"
+      ],
+      [
+        "1c456cf687c409bd",
+        "56b3a2ab5edce795"
+      ],
+      [
+        "73a49cc8c2fd2ea2",
+        "caaf8b2e6884fb17"
+      ],
+      [
+        "bf8320c849634e11",
+        "6d89dd8c195e990d"
+      ],
+      [
+        "15b5ea552e9fe7cd",
+        "7203a7945355c4d7"
+      ],
+      [
+        "c93fe1522eb37366"
+      ],
+      [
+        "62a8996a68b6e4be"
+      ]
+    ]
+  },
+  {
+    "id": "1a48010453bdea59",
+    "type": "change",
+    "z": "293b64c25a629bf5",
+    "name": "LED ON",
+    "rules": [
+      {
+        "t": "set",
+        "p": "payload",
+        "pt": "msg",
+        "to": "true",
+        "tot": "bool"
+      }
+    ],
+    "action": "",
+    "property": "",
+    "from": "",
+    "to": "",
+    "reg": false,
+    "x": 1160,
+    "y": 40,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "1401c4869eeddf23",
+    "type": "change",
+    "z": "293b64c25a629bf5",
+    "name": "LED OFF",
+    "rules": [
+      {
+        "t": "set",
+        "p": "payload",
+        "pt": "msg",
+        "to": "false",
+        "tot": "bool"
+      }
+    ],
+    "action": "",
+    "property": "",
+    "from": "",
+    "to": "",
+    "reg": false,
+    "x": 1160,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ce3624765dce33d2",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Log Exec Stderr",
+    "func": "msg.payload = {\n    level: \"warn\",\n    message: \"Prediction script wrote to stderr\",\n    stderr: msg.payload,\n    source: \"predict_fault.py\"\n}\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1260,
+    "y": 400,
+    "wires": [
+      [
+        "8290686a5e18aebd"
+      ]
+    ]
+  },
+  {
+    "id": "801611a0e72886ac",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Handle Exec Error Code",
+    "func": "// msg.payload contains the return code\nif (msg.payload !== 0) {\n    const errorMsg = {\n        payload: {\n            level: \"error\",\n            message: \"Prediction script exited with non-zero code: \" + msg.payload,\n            return_code: msg.payload,\n            source: \"predict_fault.py\"\n        }\n    };\n    node.send(errorMsg);\n    return;\n}\nreturn null; ",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1270,
+    "y": 440,
+    "wires": [
+      [
+        "8290686a5e18aebd"
+      ]
+    ]
+  },
+  {
+    "id": "31c646a72a7f6c5c",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Add Temp Threshold",
+    "func": "const threshold = 85;\n// Pass through original value\nconst original_msg = { payload: msg.payload }; \n// Create message for threshold line\nconst threshold_msg = { \n    payload: threshold, \n    topic: \"Threshold\" // Assign a topic for the series\n};\n\n// Return both messages to plot both lines\nreturn [ original_msg, threshold_msg ];",
+    "outputs": 2,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 920,
+    "y": 720,
+    "wires": [
+      [
+        "966b73fa5e0b2806"
+      ],
+      [
+        "966b73fa5e0b2806"
+      ]
+    ]
+  },
+  {
+    "id": "966b73fa5e0b2806",
+    "type": "ui_chart",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "334f844f39753a35",
+    "order": 4,
+    "width": 18,
+    "height": 4,
+    "label": "Temperature (°C)",
+    "chartType": "line",
+    "legend": "true",
+    "xformat": "HH:mm:ss",
+    "interpolate": "linear",
+    "nodata": "",
+    "dot": false,
+    "ymin": "",
+    "ymax": "",
+    "removeOlder": "1",
+    "removeOlderPoints": "",
+    "removeOlderUnit": "3600",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#1f77b4",
+      "#ff0000",
+      "#aec7e8",
+      "#ffbb78",
+      "#98df8a",
+      "#ff9896",
+      "#c5b0d5",
+      "#c49c94",
+      "#f7b6d2",
+      "#c7c7c7",
+      "#dbdb8d",
+      "#9edae5"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "x": 1230,
+    "y": 700,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "1c456cf687c409bd",
+    "type": "ui_chart",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "334f844f39753a35",
+    "order": 2,
+    "width": 18,
+    "height": 5,
+    "label": "Vibration (RMS)",
+    "chartType": "line",
+    "legend": "false",
+    "xformat": "HH:mm:ss",
+    "interpolate": "linear",
+    "nodata": "",
+    "dot": false,
+    "ymin": "",
+    "ymax": "",
+    "removeOlder": "1",
+    "removeOlderPoints": "",
+    "removeOlderUnit": "3600",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#ff7f0e",
+      "#2ca02c",
+      "#d62728",
+      "#9467bd",
+      "#8c564b",
+      "#e377c2",
+      "#7f7f7f",
+      "#bcbd22",
+      "#17becf"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "className": "",
+    "x": 920,
+    "y": 680,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "73a49cc8c2fd2ea2",
+    "type": "ui_chart",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "334f844f39753a35",
+    "order": 6,
+    "width": 18,
+    "height": 4,
+    "label": "Pressure (bar)",
+    "chartType": "line",
+    "legend": "false",
+    "xformat": "HH:mm:ss",
+    "interpolate": "linear",
+    "nodata": "",
+    "dot": false,
+    "ymin": "",
+    "ymax": "",
+    "removeOlder": "1",
+    "removeOlderPoints": "",
+    "removeOlderUnit": "3600",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#2ca02c",
+      "#d62728",
+      "#9467bd",
+      "#8c564b",
+      "#e377c2",
+      "#7f7f7f",
+      "#bcbd22",
+      "#17becf",
+      "#000000"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "className": "",
+    "x": 920,
+    "y": 800,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "bf8320c849634e11",
+    "type": "ui_chart",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "334f844f39753a35",
+    "order": 8,
+    "width": 18,
+    "height": 4,
+    "label": "Power (kW)",
+    "chartType": "line",
+    "legend": "false",
+    "xformat": "HH:mm:ss",
+    "interpolate": "linear",
+    "nodata": "",
+    "dot": false,
+    "ymin": "",
+    "ymax": "",
+    "removeOlder": "1",
+    "removeOlderPoints": "",
+    "removeOlderUnit": "3600",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#d62728",
+      "#9467bd",
+      "#8c564b",
+      "#e377c2",
+      "#7f7f7f",
+      "#bcbd22",
+      "#17becf"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "x": 930,
+    "y": 880,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "15b5ea552e9fe7cd",
+    "type": "switch",
+    "z": "293b64c25a629bf5",
+    "name": "Temp > 85°C?",
+    "property": "payload.temperature_c",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "gt",
+        "v": "85",
+        "vt": "num"
+      },
+      {
+        "t": "else"
+      }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 2,
+    "x": 800,
+    "y": 1060,
+    "wires": [
+      [
+        "1e3af53782ea2da9"
+      ],
+      [
+        "6bd3fd4e39041223"
+      ]
+    ]
+  },
+  {
+    "id": "7203a7945355c4d7",
+    "type": "switch",
+    "z": "293b64c25a629bf5",
+    "name": "Vib RMS > 2.5?",
+    "property": "payload.vibration_rms",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "gt",
+        "v": "2.5",
+        "vt": "num"
+      },
+      {
+        "t": "else"
+      }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 2,
+    "x": 820,
+    "y": 1120,
+    "wires": [
+      [
+        "1653c216bb0bb844"
+      ],
+      [
+        "6bd3fd4e39041223"
+      ]
+    ]
+  },
+  {
+    "id": "35eb7638c60f1193",
+    "type": "switch",
+    "z": "293b64c25a629bf5",
+    "name": "Prediction != Normal?",
+    "property": "payload.prediction",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "neq",
+        "v": "Normal",
+        "vt": "str"
+      },
+      {
+        "t": "else"
+      }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 2,
+    "x": 1660,
+    "y": 240,
+    "wires": [
+      [
+        "a7c25f561471c0f2"
+      ],
+      [
+        "6bd3fd4e39041223"
+      ]
+    ]
+  },
+  {
+    "id": "1e3af53782ea2da9",
+    "type": "change",
+    "z": "293b64c25a629bf5",
+    "name": "Format High Temp Alert",
+    "rules": [
+      {
+        "t": "set",
+        "p": "alert",
+        "pt": "msg",
+        "to": "{\"type\":\"Temperature\",\"message\":\"High Temperature Detected! Threshold: 85°C\"}",
+        "tot": "json"
+      },
+      {
+        "t": "set",
+        "p": "topic",
+        "pt": "msg",
+        "to": "ALERT_TEMP",
+        "tot": "str"
+      }
+    ],
+    "action": "",
+    "property": "",
+    "from": "",
+    "to": "",
+    "reg": false,
+    "x": 1050,
+    "y": 1060,
+    "wires": [
+      [
+        "f115f3dc9554744b",
+        "6bd3fd4e39041223"
+      ]
+    ]
+  },
+  {
+    "id": "1653c216bb0bb844",
+    "type": "change",
+    "z": "293b64c25a629bf5",
+    "name": "Format High Vib Alert",
+    "rules": [
+      {
+        "t": "set",
+        "p": "alert",
+        "pt": "msg",
+        "to": "{\"type\":\"Vibration\",\"message\":\"High Vibration Detected! Threshold: 2.5 RMS\"}",
+        "tot": "json"
+      },
+      {
+        "t": "set",
+        "p": "topic",
+        "pt": "msg",
+        "to": "ALERT_VIB",
+        "tot": "str"
+      }
+    ],
+    "action": "",
+    "property": "",
+    "from": "",
+    "to": "",
+    "reg": false,
+    "x": 1040,
+    "y": 1120,
+    "wires": [
+      [
+        "f115f3dc9554744b",
+        "6bd3fd4e39041223"
+      ]
+    ]
+  },
+  {
+    "id": "a7c25f561471c0f2",
+    "type": "change",
+    "z": "293b64c25a629bf5",
+    "name": "Format Prediction Alert",
+    "rules": [
+      {
+        "t": "set",
+        "p": "alert",
+        "pt": "msg",
+        "to": "{   \"type\":\"Prediction\",   \"message\":\"Fault Predicted: \" & payload.prediction & \" (Conf: \" & payload.confidence & \")\"}",
+        "tot": "jsonata"
+      },
+      {
+        "t": "set",
+        "p": "topic",
+        "pt": "msg",
+        "to": "ALERT_PRED",
+        "tot": "str"
+      }
+    ],
+    "action": "",
+    "property": "",
+    "from": "",
+    "to": "",
+    "reg": false,
+    "x": 2000,
+    "y": 340,
+    "wires": [
+      [
+        "f115f3dc9554744b",
+        "6bd3fd4e39041223"
+      ]
+    ]
+  },
+  {
+    "id": "f115f3dc9554744b",
+    "type": "ui_toast",
+    "z": "293b64c25a629bf5",
+    "position": "top right",
+    "displayTime": "5",
+    "highlight": "",
+    "sendall": true,
+    "outputs": 0,
+    "ok": "",
+    "cancel": "",
+    "raw": false,
+    "className": "",
+    "topic": "Alert",
+    "name": "Show Alert Toast",
+    "x": 2110,
+    "y": 520,
+    "wires": []
+  },
+  {
+    "id": "6d89dd8c195e990d",
+    "type": "ui_gauge",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "334f844f39753a35",
+    "order": 7,
+    "width": 8,
+    "height": 4,
+    "gtype": "gage",
+    "title": "Power (kW)",
+    "label": "kW",
+    "format": "{{value | number:2}}",
+    "min": 0,
+    "max": "5",
+    "colors": [
+      "#00b500",
+      "#ffdd00",
+      "#ff0000"
+    ],
+    "seg1": "3.5",
+    "seg2": "4.5",
+    "diff": false,
+    "className": "",
+    "x": 930,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "id": "d77af6950b01f80a",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Format Prediction Display",
+    "func": "let prediction = msg.payload.prediction || \"N/A\";\n// Attempt to format confidence, handle potential errors\nlet confidence = \"N/A\";\ntry {\n    if (msg.payload.confidence !== undefined && msg.payload.confidence !== null) {\n        confidence = (parseFloat(msg.payload.confidence) * 100).toFixed(1) + \"%\";\n    }\n} catch (e) {\n    node.warn(\"Could not format confidence: \" + msg.payload.confidence);\n}\n\nlet color = \"grey\"; // Default to grey if N/A\nlet text = `Prediction: ${prediction} (${confidence})`;\n\nif (prediction === \"Normal\") {\n    color = \"green\";\n} else if (prediction !== \"N/A\") {\n    color = \"red\"; // Non-normal and not N/A is red\n}\n\nmsg.payload = text;\nmsg.color = color;\n\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1650,
+    "y": 300,
+    "wires": [
+      [
+        "de045f41dbcabd60"
+      ]
+    ]
+  },
+  {
+    "id": "de045f41dbcabd60",
+    "type": "ui_text",
+    "z": "293b64c25a629bf5",
+    "group": "baf712d78ee156f7",
+    "order": 15,
+    "width": 6,
+    "height": 1,
+    "name": "Prediction Output",
+    "label": "ML Prediction:",
+    "format": "<font color='{{msg.color || \"black\"}}'>{{msg.payload}}</font>",
+    "layout": "row-spread",
+    "className": "",
+    "style": false,
+    "font": "",
+    "fontSize": 16,
+    "color": "#000000",
+    "x": 2050,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "6bd3fd4e39041223",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Determine Status / Ack Alert",
+    "func": "const MAX_LOG_SIZE = 20;\n\n// Get current states from context, default to normal/false\nlet states = context.get(\"systemStates\") || {\n    temp: 'ok', // ok, high\n    vib: 'ok', // ok, high\n    pred: 'ok', // ok, fault\n    acknowledged: false // New state\n};\n\nlet alertLog = context.get(\"alertLog\") || [];\nlet newAlert = null;\nlet triggerTableUpdate = false;\n\n// Check for Acknowledge signal\nif (msg.topic === 'ACK_ALERT') {\n    states.acknowledged = true;\n    // Option 1: Reset source states on Ack\n    // states.temp = 'ok';\n    // states.vib = 'ok';\n    // states.pred = 'ok'; \n    // Option 2: Just mark as acknowledged, status changes only when underlying condition clears.\n    // Let's use Option 2 for clearer state representation\n    node.log(\"Alerts acknowledged.\");\n} \n// Update state based on incoming alert topic (only if not acknowledged recently)\nelse if (msg.topic === 'ALERT_TEMP') {\n    if(states.temp !== 'high') {\n        newAlert = msg.alert;\n        states.acknowledged = false; // New alert overrides ack\n    }\n    states.temp = 'high';\n} else if (msg.topic === 'ALERT_VIB') {\n     if(states.vib !== 'high') {\n        newAlert = msg.alert;\n        states.acknowledged = false;\n    }\n    states.vib = 'high';\n} else if (msg.topic === 'ALERT_PRED') {\n     if(states.pred !== 'fault') {\n        newAlert = msg.alert;\n        states.acknowledged = false;\n    }\n    states.pred = 'fault';\n} \n// Handle reset conditions from normal path inputs\nelse if (msg.payload && typeof msg.payload === 'object') { \n    if (msg.payload.temperature_c <= 85) states.temp = 'ok';\n    if (msg.payload.vibration_rms <= 2.5) states.vib = 'ok';\n    if (msg.payload.prediction === 'Normal') states.pred = 'ok';\n    \n    // If all conditions clear, clear acknowledged flag too\n    if(states.temp === 'ok' && states.vib === 'ok' && states.pred === 'ok') {\n        states.acknowledged = false;\n    }\n}\n\n// --- Determine Overall Status --- \nlet overallStatus = {\n    text: \"Normal\",\n    color: \"green\",\n    icon: \"fa fa-check-circle\",\n    led: true\n};\nlet isAlertActive = false;\n\nif (states.pred === 'fault') {\n    isAlertActive = true;\n    overallStatus = {\n        text: states.acknowledged ? \"Fault Predicted (Ack)\" : \"Alert: Fault Predicted\",\n        color: states.acknowledged ? \"grey\" : \"red\",\n        icon: states.acknowledged ? \"fa fa-check\" : \"fa fa-exclamation-circle\",\n        led: !states.acknowledged // LED true(green) if ack'd, false(red) if active\n    };\n} else if (states.temp === 'high' || states.vib === 'high') {\n    isAlertActive = true;\n    overallStatus = {\n        text: states.acknowledged ? \"High Sensor (Ack)\" : \"Warning: High Sensor\",\n        color: states.acknowledged ? \"grey\" : \"orange\",\n        icon: states.acknowledged ? \"fa fa-check\" : \"fa fa-exclamation-triangle\",\n        led: !states.acknowledged // LED true(green) if ack'd, false(yellow/orange) if active\n    };\n}\n\n// --- Update Alert Log --- \nif (newAlert) {\n    newAlert.timestamp = new Date().toISOString();\n    alertLog.unshift(newAlert); // Add to beginning\n    if (alertLog.length > MAX_LOG_SIZE) {\n        alertLog.pop(); // Remove oldest\n    }\n    triggerTableUpdate = true; // Signal to update table\n}\n\n// --- Prepare Outputs --- \n// Pass through the consolidated state for SVG use\nmsg.systemStates = states; \nmsg.payload = {}; // Clear original payload\nmsg.payload.overall_status = overallStatus;\nmsg.payload.temp_led = (states.temp === 'ok');\nmsg.payload.vib_led = (states.vib === 'ok');\nmsg.payload.pred_led = (states.pred === 'ok');\nmsg.payload.triggerTableUpdate = triggerTableUpdate;\nmsg.payload.ackButtonDisabled = !isAlertActive || states.acknowledged; // Disable Ack button if no active alert or already ack'd\n\n// Store updated states and log\ncontext.set(\"systemStates\", states);\ncontext.set(\"alertLog\", alertLog);\n\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "// Initialize states and log on deploy/restart\ncontext.set(\"systemStates\", { temp: 'ok', vib: 'ok', pred: 'ok', acknowledged: false });\ncontext.set(\"alertLog\", []);\nnode.log(\"System states and alert log initialized.\");",
+    "finalize": "",
+    "libs": [],
+    "x": 1320,
+    "y": 1100,
+    "wires": [
+      [
+        "f150ea9286f00b25"
+      ]
+    ]
+  },
+  {
+    "id": "ce1ca211c9086341",
+    "type": "catch",
+    "z": "293b64c25a629bf5",
+    "name": "Catch Node Errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 250,
+    "y": 420,
+    "wires": [
+      [
+        "e6a1283e591f4f98"
+      ]
+    ]
+  },
+  {
+    "id": "a4fe3733d5e63078",
+    "type": "switch",
+    "z": "293b64c25a629bf5",
+    "name": "Trigger Table Update?",
+    "property": "payload.triggerTableUpdate",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "true"
+      }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 1,
+    "x": 1520,
+    "y": 1160,
+    "wires": [
+      [
+        "c586556cb2ba01b7"
+      ]
+    ]
+  },
+  {
+    "id": "c586556cb2ba01b7",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Format Alert Log for Table",
+    "func": "let alertLog = context.get(\"alertLog\") || [];\n\n// Format for ui_table\nmsg.payload = alertLog.map(alert => {\n    return {\n        \"Timestamp\": new Date(alert.timestamp).toLocaleString(),\n        \"Type\": alert.type,\n        \"Message\": alert.message\n    }\n});\n\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1810,
+    "y": 1020,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac6969a7722c8b4c",
+    "type": "inject",
+    "z": "293b64c25a629bf5",
+    "name": "Update Table on Start/Deploy",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 0.5,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 1610,
+    "y": 1240,
+    "wires": [
+      [
+        "c586556cb2ba01b7"
+      ]
+    ]
+  },
+  {
+    "id": "290947e9d0bc3784",
+    "type": "ui_gauge",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "334f844f39753a35",
+    "order": 3,
+    "width": 8,
+    "height": 4,
+    "gtype": "gage",
+    "title": "Temperature (°C)",
+    "label": "°C",
+    "format": "{{value | number:1}}",
+    "min": 0,
+    "max": "120",
+    "colors": [
+      "#00b500",
+      "#ffdd00",
+      "#ff0000"
+    ],
+    "seg1": "80",
+    "seg2": "85",
+    "className": "",
+    "x": 910,
+    "y": 640,
+    "wires": []
+  },
+  {
+    "id": "caaf8b2e6884fb17",
+    "type": "ui_gauge",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "334f844f39753a35",
+    "order": 5,
+    "width": 8,
+    "height": 4,
+    "gtype": "gage",
+    "title": "Pressure (bar)",
+    "label": "bar",
+    "format": "{{value | number:1}}",
+    "min": 0,
+    "max": "15",
+    "colors": [
+      "#0080ff",
+      "#00b500",
+      "#ffdd00"
+    ],
+    "seg1": "8",
+    "seg2": "12",
+    "className": "",
+    "x": 920,
+    "y": 840,
+    "wires": []
+  },
+  {
+    "id": "d4e2a0bd0d837957",
+    "type": "ui_text",
+    "z": "293b64c25a629bf5",
+    "group": "baf712d78ee156f7",
+    "order": 17,
+    "width": 6,
+    "height": 1,
+    "name": "Compressor Info",
+    "label": "Compressor ID:",
+    "format": "COMP-001 (Main Hall)",
+    "layout": "row-left",
+    "className": "",
+    "style": false,
+    "font": "",
+    "fontSize": 16,
+    "color": "#000000",
+    "x": 2040,
+    "y": 1080,
+    "wires": []
+  },
+  {
+    "id": "56b3a2ab5edce795",
+    "type": "ui_gauge",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "334f844f39753a35",
+    "order": 1,
+    "width": 8,
+    "height": 5,
+    "gtype": "gage",
+    "title": "Vibration (RMS)",
+    "label": "RMS",
+    "format": "{{value | number:2}}",
+    "min": 0,
+    "max": 5,
+    "colors": [
+      "#00b500",
+      "#ffdd00",
+      "#ff0000"
+    ],
+    "seg1": "2",
+    "seg2": "2.5",
+    "diff": false,
+    "className": "",
+    "x": 920,
+    "y": 760,
+    "wires": []
+  },
+  {
+    "id": "62b429fc887ff038",
+    "type": "ui_led",
+    "z": "293b64c25a629bf5",
+    "order": 1,
+    "group": "baf712d78ee156f7",
+    "width": 2,
+    "height": 1,
+    "label": "MQTT",
+    "labelPlacement": "top",
+    "labelAlignment": "center",
+    "colorForValue": [
+      {
+        "color": "#ff0000",
+        "value": "false",
+        "valueType": "bool"
+      },
+      {
+        "color": "#00ff00",
+        "value": "true",
+        "valueType": "bool"
+      }
+    ],
+    "allowColorForValueInMessage": false,
+    "shape": "circle",
+    "showGlow": true,
+    "name": "",
+    "x": 530,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "62a8996a68b6e4be",
+    "type": "ui_text",
+    "z": "293b64c25a629bf5",
+    "group": "baf712d78ee156f7",
+    "order": 19,
+    "width": 6,
+    "height": 1,
+    "name": "",
+    "label": "Last Data:",
+    "format": "{{payload | date: 'yyyy-MM-dd HH:mm:ss'}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": false,
+    "font": "",
+    "fontSize": "14",
+    "color": "#000000",
+    "x": 930,
+    "y": 960,
+    "wires": []
+  },
+  {
+    "id": "c93fe1522eb37366",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Prepare SVG Data",
+    "func": "// Get latest sensor data (from input) and system states (from context/input)\nconst sensorData = msg.payload || {}; // Input should be the raw sensor payload\nconst systemStates = msg.systemStates || context.get(\"systemStates\") || {}; // Get states from status function output\n\nconst temp = sensorData.temperature_c;\nconst vib = sensorData.vibration_rms;\nconst status = systemStates.acknowledged ? 'acknowledged' : \n               (systemStates.pred === 'fault' ? 'fault' : \n               (systemStates.temp === 'high' || systemStates.vib === 'high' ? 'warning' : 'normal'));\n\nconst tempThresholdHigh = 85;\nconst tempThresholdWarn = 75;\nconst vibThresholdHigh = 2.5;\nconst vibThresholdWarn = 2.0;\n\nlet svgStyles = {\n    motorStyle: { fill: '#0056b3' }, // default blue\n    pumpHeadLeftStyle: { fill: '#868e96' }, // default grey\n    pumpHeadRightStyle: { fill: '#868e96' }, // default grey\n    statusIndicatorStyle: { fill: 'grey' }, // default grey\n    vibrationIndicatorStyle: { fill: 'none', stroke: 'none' } // default hidden\n};\n\n// Apply status color first\nif (status === 'normal') {\n    svgStyles.statusIndicatorStyle.fill = 'green';\n    // Base colors for normal state\n    svgStyles.motorStyle.fill = '#0056b3';\n    svgStyles.pumpHeadLeftStyle.fill = '#868e96';\n    svgStyles.pumpHeadRightStyle.fill = '#868e96';\n} else if (status === 'warning') {\n    svgStyles.statusIndicatorStyle.fill = 'orange';\n    svgStyles.motorStyle.fill = 'orange'; // Example: motor turns orange on warning\n} else if (status === 'fault') {\n    svgStyles.statusIndicatorStyle.fill = 'red';\n    svgStyles.motorStyle.fill = 'darkred'; // Example: motor turns dark red on fault\n    svgStyles.pumpHeadLeftStyle.fill = 'darkred';\n    svgStyles.pumpHeadRightStyle.fill = 'darkred';\n} else if (status === 'acknowledged') {\n     svgStyles.statusIndicatorStyle.fill = 'grey'; // Indicate acknowledged\n     // Keep component colors based on underlying state?\n     if(systemStates.temp === 'high' || systemStates.vib === 'high') {\n         svgStyles.motorStyle.fill = 'darkgrey'; // Muted warning color\n     } \n     if (systemStates.pred === 'fault') {\n         svgStyles.motorStyle.fill = '#500000'; // Muted fault color\n         svgStyles.pumpHeadLeftStyle.fill = '#500000';\n        svgStyles.pumpHeadRightStyle.fill = '#500000';\n     }\n}\n\n// Override/adjust colors based on specific sensor values\nif (temp >= tempThresholdHigh) {\n    // Make heads red, even if status isn't fault (e.g., just temp high)\n    if(status !== 'fault' && status !== 'acknowledged') { // Avoid overriding fault/ack color\n       svgStyles.pumpHeadLeftStyle.fill = 'red';\n       svgStyles.pumpHeadRightStyle.fill = 'red';\n    } \n} else if (temp >= tempThresholdWarn) {\n     if(status !== 'fault' && status !== 'acknowledged') {\n        svgStyles.pumpHeadLeftStyle.fill = 'orange';\n        svgStyles.pumpHeadRightStyle.fill = 'orange';\n     }\n}\n\n// Set vibration indicator color\nif (vib >= vibThresholdHigh) {\n    svgStyles.vibrationIndicatorStyle = { fill: 'red', stroke: 'red' };\n} else if (vib >= vibThresholdWarn) {\n    svgStyles.vibrationIndicatorStyle = { fill: 'orange', stroke: 'orange' };\n}\n\nmsg.payload = svgStyles;\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1230,
+    "y": 740,
+    "wires": [
+      [
+        "bf7edbbd42460654"
+      ]
+    ]
+  },
+  {
+    "id": "bf7edbbd42460654",
+    "type": "ui_template",
+    "z": "293b64c25a629bf5",
+    "group": "84105521f40166b8",
+    "name": "Compressor Visual Status",
+    "order": 1,
+    "width": 10,
+    "height": 7,
+    "format": "<div style=\"display: flex; justify-content: center; align-items: center; height: 100%; background: #f0f0f0; border-radius: 5px; padding: 5px;\">\n\n<svg id=\"detailed-compressor-svg\" width=\"100%\" height=\"100%\" viewBox=\"0 0 350 250\" xmlns=\"http://www.w3.org/2000/svg\" preserveAspectRatio=\"xMidYMid meet\">\n  <defs>\n    \n  </defs>\n  <style>\n    .comp-outline { stroke: #111; stroke-width: 0.5; }\n    .comp-fill-tank { fill: #007bff; }\n    .comp-fill-motor { fill: #0056b3; }\n    .comp-fill-pump { fill: #6c757d; }\n    .comp-fill-pump-head { fill: #868e96; }\n    .comp-fill-switch { fill: #343a40; }\n    .comp-fill-legs { fill: #004d66; }\n    .comp-fill-plate { fill: #adb5bd; }\n    .comp-fill-outlet { fill: #DAA520; } /* Gold */\n    .comp-fill-handle { fill: #dc3545; } /* Red */\n    .comp-gauge-face { fill: white; }\n    .comp-gauge-needle { stroke: red; stroke-width: 1.5; }\n    .comp-piping { fill: none; stroke: #999; stroke-width: 3; stroke-linecap: round; }\n    .comp-fins { stroke: #555; stroke-width: 1; }\n    .status-indicator { stroke: black; stroke-width: 0.5; }\n    .vibration-indicator { stroke-width: 1.5; }\n  </style>\n\n  <g id=\"compressor-detailed-assembly\">\n\n    \n    <g id=\"comp-tank-group\" transform=\"translate(0, 20)\">\n      <rect id=\"comp-tank-leg-1\" x=\"50\" y=\"185\" width=\"15\" height=\"20\" class=\"comp-fill-legs comp-outline\"/>\n      <rect id=\"comp-tank-leg-2\" x=\"285\" y=\"185\" width=\"15\" height=\"20\" class=\"comp-fill-legs comp-outline\"/>\n      \n      <path id=\"comp-tank\" class=\"comp-fill-tank comp-outline\" d=\"M 40 170 a 40 40 0 0 1 0 -80 H 310 a 40 40 0 0 1 0 80 H 40 Z\"/>\n       \n      <rect id=\"comp-outlet-base\" x=\"340\" y=\"115\" width=\"10\" height=\"30\" class=\"comp-fill-outlet comp-outline\"/>\n      <rect id=\"comp-outlet-handle\" x=\"348\" y=\"125\" width=\"20\" height=\"5\" class=\"comp-fill-handle comp-outline\"/>\n    </g>\n\n    \n    <rect id=\"comp-plate\" x=\"40\" y=\"80\" width=\"270\" height=\"10\" class=\"comp-fill-plate comp-outline\"/>\n\n    \n    <g id=\"comp-pump-unit\" transform=\"translate(80, 5)\">\n      \n      <rect id=\"comp-pump-base\" x=\"5\" y=\"40\" width=\"70\" height=\"35\" class=\"comp-fill-pump comp-outline\" rx=\"3\" ry=\"3\"/>\n       \n      <g id=\"comp-pump-head-left\" ng-style=\"msg.payload.pumpHeadLeftStyle\">\n         <path class=\"comp-outline\" d=\"M 0 40 L 0 20 Q 0 5, 15 5 T 30 20 L 30 40 Z\"/>\n         \n         <path class=\"comp-fins\" d=\"M 2 10 h 26 M 2 14 h 26 M 2 18 h 26 M 2 22 h 26 M 2 26 h 26 M 2 30 h 26 M 2 34 h 26\"/>\n      </g>\n       \n       <g id=\"comp-pump-head-right\" transform=\"translate(50,0)\" ng-style=\"msg.payload.pumpHeadRightStyle\">\n          <path class=\"comp-outline\" d=\"M 0 40 L 0 20 Q 0 5, 15 5 T 30 20 L 30 40 Z\"/>\n          \n         <path class=\"comp-fins\" d=\"M 2 10 h 26 M 2 14 h 26 M 2 18 h 26 M 2 22 h 26 M 2 26 h 26 M 2 30 h 26 M 2 34 h 26\"/>\n      </g>\n      \n      <path class=\"comp-piping\" d=\"M 15 5 C 15 -5, 65 -5, 65 5\"/> \n      <path class=\"comp-piping\" d=\"M 40 0 V -10\"/> \n      <path class=\"comp-piping\" d=\"M 40 75 V 80\"/> \n    </g>\n\n     \n    <g id=\"comp-motor-unit\" transform=\"translate(200, 10)\" >\n       \n       <ellipse id=\"comp-motor-casing\" cx=\"35\" cy=\"50\" rx=\"35\" ry=\"28\" class=\"comp-outline\" ng-style=\"msg.payload.motorStyle\"/>\n       \n       <path class=\"comp-fins\" d=\"M 10 50 h 50 M 5 55 h 60 M 5 45 h 60 M 2 60 h 66 M 2 40 h 66\"/>\n        \n       <rect id=\"comp-motor-base\" x=\"10\" y=\"73\" width=\"50\" height=\"7\" class=\"comp-fill-legs comp-outline\"/>\n       \n       <rect id=\"comp-motor-ebox\" x=\"25\" y=\"5\" width=\"20\" height=\"18\" class=\"comp-fill-switch comp-outline\" rx=\"2\" ry=\"2\"/>\n    </g>\n\n    \n    <g id=\"comp-switch-unit\" transform=\"translate(160, 25)\">\n      <rect id=\"comp-switch-box\" x=\"0\" y=\"10\" width=\"30\" height=\"45\" class=\"comp-fill-switch comp-outline\" rx=\"2\" ry=\"2\"/>\n       \n      <circle id=\"comp-switch-gauge-face\" cx=\"15\" cy=\"0\" r=\"12\" class=\"comp-gauge-face comp-outline\"/>\n      <line id=\"comp-pressure-gauge-needle\" x1=\"15\" y1=\"0\" x2=\"15\" y2=\"-9\" class=\"comp-gauge-needle\"/> \n      \n      <circle id=\"comp-switch-button\" cx=\"15\" cy=\"50\" r=\"5\" class=\"comp-fill-handle comp-outline\"/>\n       \n       <path class=\"comp-piping\" d=\"M 0 25 h -20 v -30\"/> \n    </g>\n\n    \n    <circle id=\"comp-status-indicator\" cx=\"20\" cy=\"20\" r=\"10\" class=\"status-indicator\" ng-style=\"msg.payload.statusIndicatorStyle\"/>\n\n    \n    <g id=\"comp-vibration-indicator\" transform=\"translate(320, 190)\">\n        \n        <circle r=\"8\" stroke-width=\"1.5\" ng-style=\"msg.payload.vibrationIndicatorStyle\"/>\n        <circle r=\"5\" stroke-width=\"1.5\" ng-style=\"msg.payload.vibrationIndicatorStyle\"/>\n    </g>\n\n  </g>\n</svg>\n\n</div>\n\n<script>\n(function(scope) {\n    // Currently using ng-style for updates\n    // Add JS here for more complex interactions if needed later\n})(scope);\n</script>",
+    "storeOutMessages": false,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 1550,
+    "y": 740,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "b8f86d0ac541c45e",
+    "type": "ui_button",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "baf712d78ee156f7",
+    "order": 22,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "label": "Acknowledge Alert",
+    "tooltip": "Acknowledge current alert state",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "fa-check",
+    "payload": "",
+    "payloadType": "str",
+    "topic": "ACK_ALERT",
+    "topicType": "str",
+    "x": 1670,
+    "y": 920,
+    "wires": [
+      [
+        "6bd3fd4e39041223"
+      ]
+    ]
+  },
+  {
+    "id": "0fd9d4c0e927b9ed",
+    "type": "ui_button",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "group": "baf712d78ee156f7",
+    "order": 23,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "label": "Run Prediction Now",
+    "tooltip": "Manually trigger the fault prediction script using the last valid data",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "fa-cogs",
+    "payload": "",
+    "payloadType": "str",
+    "topic": "MANUAL_PREDICT",
+    "topicType": "str",
+    "x": 200,
+    "y": 1020,
+    "wires": [
+      [
+        "4d90c4ee2b646f87"
+      ]
+    ]
+  },
+  {
+    "id": "4d90c4ee2b646f87",
+    "type": "change",
+    "z": "293b64c25a629bf5",
+    "name": "Get Last Data",
+    "rules": [
+      {
+        "t": "set",
+        "p": "payload",
+        "pt": "msg",
+        "to": "lastValidData",
+        "tot": null
+      }
+    ],
+    "action": "",
+    "property": "",
+    "from": "",
+    "to": "",
+    "reg": false,
+    "x": 460,
+    "y": 1020,
+    "wires": [
+      [
+        "f6c04c4435aa8773"
+      ]
+    ]
+  },
+  {
+    "id": "f6c04c4435aa8773",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Reserialize for Manual Predict",
+    "func": "// If lastValidData exists, format it like output 1 of the distributor\nif (msg.payload) {\n    msg.payload = JSON.stringify(msg.payload);\n    return msg;\n}\nnode.warn(\"No valid data available for manual prediction.\");\nreturn null;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 510,
+    "y": 1120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "8290686a5e18aebd",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Log Event",
+    "func": "// Simple structured logger (replace with file/syslog etc. if needed)\nconst logEntry = msg.payload;\nconst level = logEntry.level || 'info';\nconst message = logEntry.message || JSON.stringify(logEntry);\nconst timestamp = new Date().toISOString();\n\nlet logOutput = `${timestamp} [${level.toUpperCase()}] ${message}`;\n\nif (logEntry.source) {\n    logOutput += ` (Source: ${logEntry.source})`;\n}\nif (logEntry.error) {\n     logOutput += `\\n  Error: ${logEntry.error}`;\n}\n// Add more fields as needed...\n\nnode.log(logOutput);\n\n// Optionally pass the original message through if needed elsewhere\n// return msg; \nreturn null; // Stop flow here for logging",
+    "outputs": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1560,
+    "y": 500,
+    "wires": []
+  },
+  {
+    "id": "e6a1283e591f4f98",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Handle Error",
+    "func": "// Central error handler\nconst error = msg.error;\nconst logMsg = {\n    payload: {\n        level: \"error\",\n        message: error.message || \"An error occurred\",\n        source_id: error.source?.id,\n        source_name: error.source?.name,\n        source_type: error.source?.type,\n        error_obj: JSON.stringify(error) // Include full error object\n    }\n};\n\n// Update DB status LED if it's a DB error (assuming DB ops would be added here)\n// if (error.source?.type === 'mysql' || (error.message && error.message.toLowerCase().includes('sql')) ) {\n//    flow.set(\"db_status\", false);\n//    node.send([logMsg, {payload: false, topic: \"db_status_update\"}]); \n//} else {\n    node.send([logMsg, null]); // Send only log message\n//}\nreturn;",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 470,
+    "y": 520,
+    "wires": [
+      [
+        "8290686a5e18aebd"
+      ],
+      []
+    ]
+  },
+  {
+    "id": "663d5975d18a4663",
+    "type": "link in",
+    "z": "293b64c25a629bf5",
+    "name": "link in 1",
+    "links": [
+      "f150ea9286f00b25"
+    ],
+    "x": 1775,
+    "y": 800,
+    "wires": [
+      [
+        "b8f86d0ac541c45e",
+        "c93fe1522eb37366"
+      ]
+    ]
+  },
+  {
+    "id": "621f81ba1ecf5069",
+    "type": "debug",
+    "z": "293b64c25a629bf5",
+    "name": "Debug Exec Stderr",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1230,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "id": "e644ac1d1da6bb21",
+    "type": "mqtt in",
+    "z": "293b64c25a629bf5",
+    "name": "Receive MQTT Data",
+    "topic": "compressor/data",
+    "qos": "2",
+    "datatype": "utf8",
+    "broker": "6d238b1133e531ec",
+    "nl": false,
+    "rap": false,
+    "inputs": 0,
+    "x": 150,
+    "y": 160,
+    "wires": [
+      [
+        "efdc3b1d4d221c2c"
+      ]
+    ]
+  },
+  {
+    "id": "efdc3b1d4d221c2c",
+    "type": "json",
+    "z": "293b64c25a629bf5",
+    "name": "Parse MQTT JSON",
+    "property": "payload",
+    "action": "obj",
+    "pretty": false,
+    "x": 330,
+    "y": 240,
+    "wires": [
+      [
+        "defd55c4adc28ff7",
+        "prepare_sensor_sql"
+      ]
+    ]
+  },
+  {
+    "id": "defd55c4adc28ff7",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Format JSON for Exec",
+    "func": "msg.payload = JSON.stringify(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 580,
+    "y": 280,
+    "wires": [
+      [
+        "532996f7c8c2f7d1",
+        "b51e076102578572"
+      ]
+    ]
+  },
+  {
+    "id": "b51e076102578572",
+    "type": "file",
+    "z": "293b64c25a629bf5",
+    "name": "Write to File",
+    "filename": "./data/input.json",
+    "filenameType": "str",
+    "appendNewline": false,
+    "createDir": false,
+    "overwriteFile": "true",
+    "encoding": "utf8",
+    "x": 800,
+    "y": 280,
+    "wires": [
+      [
+        "b12b137280f1a9b2"
+      ]
+    ]
+  },
+  {
+    "id": "b12b137280f1a9b2",
+    "type": "exec",
+    "z": "293b64c25a629bf5",
+    "command": "python \"./scripts/predict_fault.py\"",
+    "addpay": "",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "",
+    "winHide": false,
+    "oldrc": false,
+    "name": "Run Predict Script",
+    "x": 1000,
+    "y": 280,
+    "wires": [
+      [
+        "513541401d6e33a5"
+      ],
+      [
+        "621f81ba1ecf5069",
+        "ce3624765dce33d2",
+        "1a48010453bdea59",
+        "1401c4869eeddf23"
+      ],
+      [
+        "801611a0e72886ac"
+      ]
+    ]
+  },
+  {
+    "id": "513541401d6e33a5",
+    "type": "json",
+    "z": "293b64c25a629bf5",
+    "name": "Parse Prediction Output",
+    "property": "payload",
+    "action": "obj",
+    "pretty": false,
+    "x": 1250,
+    "y": 240,
+    "wires": [
+      [
+        "6c9470c4b9df8ee4",
+        "550f1381c1723a79",
+        "35eb7638c60f1193",
+        "d77af6950b01f80a",
+        "24784eeb73aa6762"
+      ]
+    ]
+  },
+  {
+    "id": "550f1381c1723a79",
+    "type": "ui_text",
+    "z": "293b64c25a629bf5",
+    "group": "678bf5f902c8c97e",
+    "order": 4,
+    "width": 12,
+    "height": 2,
+    "name": "Prediction Output",
+    "label": "ML Prediction:",
+    "format": "{{msg.payload.prediction}} ({{msg.payload.confidence | number:2}})",
+    "layout": "row-spread",
+    "className": "",
+    "style": false,
+    "font": "",
+    "fontSize": "",
+    "color": "#000000",
+    "x": 1510,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "id": "6c9470c4b9df8ee4",
+    "type": "debug",
+    "z": "293b64c25a629bf5",
+    "name": "Debug Prediction Result",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1750,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "id": "532996f7c8c2f7d1",
+    "type": "debug",
+    "z": "293b64c25a629bf5",
+    "name": "Debug JSON Format",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 800,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "f150ea9286f00b25",
+    "type": "link out",
+    "z": "293b64c25a629bf5",
+    "name": "link out 1",
+    "mode": "link",
+    "links": [
+      "663d5975d18a4663"
+    ],
+    "x": 1535,
+    "y": 1100,
+    "wires": []
+  },
+  {
+    "id": "43ac2ecce014a147",
+    "type": "mysql",
+    "z": "293b64c25a629bf5",
+    "mydb": "mysql_config",
+    "name": "Insert Sensor Data",
+    "x": 370,
+    "y": 160,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "66b4b81d20f2b919",
+    "type": "mqtt in",
+    "z": "293b64c25a629bf5",
+    "name": "Receive MQTT Data",
+    "topic": "compressor/data",
+    "qos": "2",
+    "datatype": "utf8",
+    "broker": "6d238b1133e531ec",
+    "nl": false,
+    "rap": false,
+    "inputs": 0,
+    "x": 430,
+    "y": 1600,
+    "wires": [
+      [
+        "9949cd4795a7e641"
+      ]
+    ]
+  },
+  {
+    "id": "a489808cd1ca36da",
+    "type": "mysql",
+    "z": "293b64c25a629bf5",
+    "mydb": "mysql_config",
+    "name": "Insert RUL Prediction",
+    "x": 630,
+    "y": 1600,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "506a3065adefeab1",
+    "type": "inject",
+    "z": "293b64c25a629bf5",
+    "name": "Trigger Prediction Every 90s",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "90",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "SELECT * FROM compressor_data ORDER BY id DESC LIMIT 7200",
+    "payload": "",
+    "payloadType": "date",
+    "x": 470,
+    "y": 1760,
+    "wires": [
+      [
+        "5f502d3681e5e33a"
+      ]
+    ]
+  },
+  {
+    "id": "5f502d3681e5e33a",
+    "type": "mysql",
+    "z": "293b64c25a629bf5",
+    "mydb": "mysql_config",
+    "name": "Fetch Rows",
+    "x": 690,
+    "y": 1760,
+    "wires": [
+      [
+        "2f49dcd65d983ef6"
+      ]
+    ]
+  },
+  {
+    "id": "2f49dcd65d983ef6",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Convert to CSV String",
+    "func": "let rows = msg.payload;\nif (!Array.isArray(rows) || rows.length === 0) {\n    node.warn(\"No data fetched from MySQL\");\n    return null;\n}\n\nlet csvContent = \"time_min,motor_rpm,pressure_bar,temperature_c,vibration_rms,power_kw,airflow_demand_cfm,torque_nm,noise_db,oilpump_power_w,motor_health,compressor_health,tank_health,blockage_factor,leak_rate_lpm,load_unload_cycles,repair_status,pressure_change_rate,temperature_change_rate,vibration_moving_avg,time_since_last_repair\\n\";\nfor (let row of rows) {\n    csvContent += [\n        row.time_min, row.motor_rpm, row.pressure_bar, row.temperature_c, row.vibration_rms,\n        row.power_kw, row.airflow_demand_cfm, row.torque_nm, row.noise_db, row.oilpump_power_w,\n        row.motor_health, row.compressor_health, row.tank_health, row.blockage_factor,\n        row.leak_rate_lpm, row.load_unload_cycles, row.repair_status, row.pressure_change_rate,\n        row.temperature_change_rate, row.vibration_moving_avg, row.time_since_last_repair\n    ].join(',') + '\\n';\n}\nmsg.payload = csvContent;\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 880,
+    "y": 1760,
+    "wires": [
+      [
+        "efa8ee865d858008"
+      ]
+    ]
+  },
+  {
+    "id": "efa8ee865d858008",
+    "type": "file",
+    "z": "293b64c25a629bf5",
+    "name": "Write to Temp CSV",
+    "filename": "./data/data_history.csv",
+    "filenameType": "str",
+    "appendNewline": false,
+    "createDir": false,
+    "overwriteFile": "true",
+    "encoding": "utf8",
+    "x": 1090,
+    "y": 1760,
+    "wires": [
+      [
+        "069849c50a47bf15"
+      ]
+    ]
+  },
+  {
+    "id": "069849c50a47bf15",
+    "type": "exec",
+    "z": "293b64c25a629bf5",
+    "command": "python \"./scripts/predict_ttf.py\"",
+    "addpay": "",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "",
+    "winHide": false,
+    "oldrc": false,
+    "name": "Run Predict RUL Script",
+    "x": 1310,
+    "y": 1760,
+    "wires": [
+      [
+        "b22e4f30248bf3bc"
+      ],
+      [],
+      []
+    ]
+  },
+  {
+    "id": "b22e4f30248bf3bc",
+    "type": "json",
+    "z": "293b64c25a629bf5",
+    "name": "Parse Prediction Output",
+    "property": "payload",
+    "action": "",
+    "pretty": false,
+    "x": 1550,
+    "y": 1760,
+    "wires": [
+      [
+        "fc6e9b428ae210ea",
+        "prepare_rul_sql"
+      ]
+    ]
+  },
+  {
+    "id": "fc6e9b428ae210ea",
+    "type": "debug",
+    "z": "293b64c25a629bf5",
+    "name": "Debug Prediction Result",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1770,
+    "y": 1700,
+    "wires": []
+  },
+  {
+    "id": "eb197c410b24f1a9",
+    "type": "mysql",
+    "z": "293b64c25a629bf5",
+    "mydb": "mysql_config",
+    "name": "MySQL Config",
+    "x": 550,
+    "y": 1320,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "886744783e5e5d20",
+    "type": "ui_gauge",
+    "z": "293b64c25a629bf5",
+    "name": "Predicted RUL",
+    "group": "84105521f40166b8",
+    "order": 3,
+    "width": 0,
+    "height": 0,
+    "gtype": "compass",
+    "title": "Predicted RUL (hours)",
+    "label": "hours",
+    "format": "{{value | number:1}}",
+    "min": 0,
+    "max": "5",
+    "colors": [
+      "#ff0000",
+      "#ffff00",
+      "#00ff00"
+    ],
+    "seg1": "50",
+    "seg2": "100",
+    "diff": false,
+    "className": "",
+    "x": 2040,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "24784eeb73aa6762",
+    "type": "change",
+    "z": "293b64c25a629bf5",
+    "name": "Update RUL Display",
+    "rules": [
+      {
+        "t": "set",
+        "p": "payload",
+        "pt": "msg",
+        "to": "payload.predicted_ttf",
+        "tot": "msg"
+      }
+    ],
+    "action": "",
+    "property": "",
+    "from": "",
+    "to": "",
+    "reg": false,
+    "x": 1660,
+    "y": 200,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "60a169f35009df10",
+    "type": "e-mail",
+    "z": "293b64c25a629bf5",
+    "server": "smtp.gmail.com",
+    "port": "465",
+    "authtype": "BASIC",
+    "saslformat": false,
+    "token": "",
+    "secure": true,
+    "tls": true,
+    "name": "Node-RED Email Alert",
+    "dname": "Email Alert",
+    "x": 2230,
+    "y": 760,
+    "wires": []
+  },
+  {
+    "id": "a052bda7eead8c66",
+    "type": "inject",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "2",
+    "payloadType": "num",
+    "x": 1830,
+    "y": 440,
+    "wires": [
+      [
+        "886744783e5e5d20"
+      ]
+    ]
+  },
+  {
+    "id": "1550f56c6316cf0f",
+    "type": "inject",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "true",
+    "payloadType": "bool",
+    "x": 2650,
+    "y": 1640,
+    "wires": [
+      [
+        "a85102158c4b4f15",
+        "05d2d34db3efa5fd",
+        "4d65a0cf944ad467",
+        "08cda68983844fbd",
+        "f907864e2d9276d8"
+      ]
+    ]
+  },
+  {
+    "id": "e9610e4cfc940cd8",
+    "type": "inject",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "false",
+    "payloadType": "bool",
+    "x": 2650,
+    "y": 1700,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "a85102158c4b4f15",
+    "type": "ui_led",
+    "z": "293b64c25a629bf5",
+    "order": 4,
+    "group": "baf712d78ee156f7",
+    "width": 2,
+    "height": 1,
+    "label": "Overall",
+    "labelPlacement": "top",
+    "labelAlignment": "center",
+    "colorForValue": [
+      {
+        "color": "#ff0000",
+        "value": "false",
+        "valueType": "bool"
+      },
+      {
+        "color": "#008000",
+        "value": "true",
+        "valueType": "bool"
+      }
+    ],
+    "allowColorForValueInMessage": false,
+    "shape": "circle",
+    "showGlow": true,
+    "name": "",
+    "x": 2890,
+    "y": 1600,
+    "wires": []
+  },
+  {
+    "id": "6f4df3f24cc734ef",
+    "type": "ui_text",
+    "z": "293b64c25a629bf5",
+    "group": "baf712d78ee156f7",
+    "order": 5,
+    "width": 6,
+    "height": 1,
+    "name": "Overall Status",
+    "label": "System Status:",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": false,
+    "font": "",
+    "fontSize": 16,
+    "color": "#000000",
+    "x": 2900,
+    "y": 1960,
+    "wires": []
+  },
+  {
+    "id": "f907864e2d9276d8",
+    "type": "ui_led",
+    "z": "293b64c25a629bf5",
+    "order": 9,
+    "group": "baf712d78ee156f7",
+    "width": 2,
+    "height": 1,
+    "label": "Temp OK",
+    "labelPlacement": "top",
+    "labelAlignment": "center",
+    "colorForValue": [
+      {
+        "color": "#ff0000",
+        "value": "false",
+        "valueType": "bool"
+      },
+      {
+        "color": "#008000",
+        "value": "true",
+        "valueType": "bool"
+      }
+    ],
+    "allowColorForValueInMessage": false,
+    "shape": "circle",
+    "showGlow": true,
+    "name": "",
+    "x": 2890,
+    "y": 1760,
+    "wires": []
+  },
+  {
+    "id": "05d2d34db3efa5fd",
+    "type": "ui_led",
+    "z": "293b64c25a629bf5",
+    "order": 7,
+    "group": "baf712d78ee156f7",
+    "width": 2,
+    "height": 1,
+    "label": "Pred OK",
+    "labelPlacement": "top",
+    "labelAlignment": "center",
+    "colorForValue": [
+      {
+        "color": "#ff0000",
+        "value": "false",
+        "valueType": "bool"
+      },
+      {
+        "color": "#008000",
+        "value": "true",
+        "valueType": "bool"
+      }
+    ],
+    "allowColorForValueInMessage": false,
+    "shape": "circle",
+    "showGlow": true,
+    "name": "",
+    "x": 2890,
+    "y": 1700,
+    "wires": []
+  },
+  {
+    "id": "08cda68983844fbd",
+    "type": "ui_led",
+    "z": "293b64c25a629bf5",
+    "order": 11,
+    "group": "baf712d78ee156f7",
+    "width": 2,
+    "height": 1,
+    "label": "Vib OK",
+    "labelPlacement": "top",
+    "labelAlignment": "center",
+    "colorForValue": [
+      {
+        "color": "#ff0000",
+        "value": "false",
+        "valueType": "bool"
+      },
+      {
+        "color": "#008000",
+        "value": "true",
+        "valueType": "bool"
+      }
+    ],
+    "allowColorForValueInMessage": false,
+    "shape": "circle",
+    "showGlow": true,
+    "name": "",
+    "x": 2890,
+    "y": 1800,
+    "wires": []
+  },
+  {
+    "id": "4d65a0cf944ad467",
+    "type": "ui_led",
+    "z": "293b64c25a629bf5",
+    "order": 13,
+    "group": "baf712d78ee156f7",
+    "width": 2,
+    "height": 1,
+    "label": "Predict",
+    "labelPlacement": "top",
+    "labelAlignment": "center",
+    "colorForValue": [
+      {
+        "color": "#808080",
+        "value": "false",
+        "valueType": "bool"
+      },
+      {
+        "color": "#0000ff",
+        "value": "true",
+        "valueType": "bool"
+      }
+    ],
+    "allowColorForValueInMessage": false,
+    "shape": "circle",
+    "showGlow": true,
+    "name": "",
+    "x": 2890,
+    "y": 1880,
+    "wires": []
+  },
+  {
+    "id": "aa1657b187a632a2",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "function 9",
+    "func": "\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 2840,
+    "y": 1480,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "6d54f5662bc52520",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "function 10",
+    "func": "msg.payload = [\n    {\n        \"Timestamp\": \"15/04/2025\",\n        \"Type\": \"OVERHEATING\",\n        \"Message\": \"Abnormal OVERHEATING (check engine)\"\n    },\n    {\n        \"Timestamp\": \"15/04/2025\",\n        \"Type\": \"RUL prediction\",\n        \"Message\": \"Expected failure within 60-120 minutes\"\n    }\n];\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 2010,
+    "y": 1240,
+    "wires": [
+      [
+        "83046844b3e66c7a"
+      ]
+    ]
+  },
+  {
+    "id": "83046844b3e66c7a",
+    "type": "ui_table",
+    "z": "293b64c25a629bf5",
+    "group": "baf712d78ee156f7",
+    "name": "Recent Alerts",
+    "order": 21,
+    "width": 12,
+    "height": 6,
+    "columns": [
+      {
+        "field": "Timestamp",
+        "title": "Timestamp",
+        "width": "25%",
+        "align": "left",
+        "formatter": "plaintext",
+        "formatterParams": {
+          "target": "_blank"
+        }
+      },
+      {
+        "field": "Type",
+        "title": "Type",
+        "width": "15%",
+        "align": "left",
+        "formatter": "plaintext",
+        "formatterParams": {
+          "target": "_blank"
+        }
+      },
+      {
+        "field": "Message",
+        "title": "Message",
+        "width": "60%",
+        "align": "left",
+        "formatter": "plaintext",
+        "formatterParams": {
+          "target": "_blank"
+        }
+      }
+    ],
+    "outputs": 0,
+    "cts": false,
+    "x": 2190,
+    "y": 1220,
+    "wires": []
+  },
+  {
+    "id": "4f50f6a9dae8b3aa",
+    "type": "inject",
+    "z": "293b64c25a629bf5",
+    "name": "Update Table on Start/Deploy",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 0.5,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 1790,
+    "y": 1320,
+    "wires": [
+      [
+        "6d54f5662bc52520"
+      ]
+    ]
+  },
+  {
+    "id": "d82c526f3c6514e8",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "function 11",
+    "func": "// تحضير الرسالة باللغتين الإنجليزية والروسية\nmsg.topic = \"Email from Node-RED\"; // الموضوع\n\n// محتوى الرسالة\nmsg.payload = \"[ALERT] Compressor fault detected\\n\" +\n              \"Status: Overheating\\n\" +\n              \"Time: 2025-04-15 15:42:02\\n\" +\n              \"Predicted RUL: 2.0 hours\\n\\n\" +\n              \"[ПРЕДУПРЕЖДЕНИЕ] Обнаружена неисправность компрессора\\n\" +\n              \"Состояние: Перегрев\\n\" +\n              \"Время: 2025-04-15 15:42:02\\n\" +\n              \"Предсказанный RUL: 2.0 часов\";\n\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 2150,
+    "y": 860,
+    "wires": [
+      [
+        "60a169f35009df10"
+      ]
+    ]
+  },
+  {
+    "id": "3cf8b557dfb04566",
+    "type": "inject",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 1960,
+    "y": 880,
+    "wires": [
+      [
+        "d82c526f3c6514e8"
+      ]
+    ]
+  },
+  {
+    "id": "586d494779060f2e",
+    "type": "inject",
+    "z": "293b64c25a629bf5",
+    "name": "",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "\"Alert: Overheating,Перегрев\"",
+    "payloadType": "str",
+    "x": 2630,
+    "y": 1900,
+    "wires": [
+      [
+        "d53f404a63edc46d"
+      ]
+    ]
+  },
+  {
+    "id": "d53f404a63edc46d",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "function 12",
+    "func": "msg.payload = '<span class=\"red-alert\">NORMAL: System OK, НОРМАЛЬНО</span>';\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 2530,
+    "y": 1820,
+    "wires": [
+      [
+        "6f4df3f24cc734ef"
+      ]
+    ]
+  },
+  {
+    "id": "38047d758d2f1b2f",
+    "type": "ui_template",
+    "z": "293b64c25a629bf5",
+    "group": "baf712d78ee156f7",
+    "name": "",
+    "order": 50,
+    "width": 0,
+    "height": 0,
+    "format": "<style>\n    .red-alert {\n        color: green !important;\n        font-weight: bold;\n    }\n</style>",
+    "storeOutMessages": true,
+    "fwdInMessages": true,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 2900,
+    "y": 2060,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "813ce45f54e47df5",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Format JSON for Exec",
+    "func": "msg.payload = JSON.stringify(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 860,
+    "y": 1680,
+    "wires": [
+      [
+        "7313052165f60312"
+      ]
+    ]
+  },
+  {
+    "id": "9949cd4795a7e641",
+    "type": "json",
+    "z": "293b64c25a629bf5",
+    "name": "Parse MQTT JSON",
+    "property": "payload",
+    "action": "obj",
+    "pretty": false,
+    "x": 630,
+    "y": 1680,
+    "wires": [
+      [
+        "813ce45f54e47df5"
+      ]
+    ]
+  },
+  {
+    "id": "7313052165f60312",
+    "type": "file",
+    "z": "293b64c25a629bf5",
+    "name": "Write to File",
+    "filename": "./data/input.json",
+    "filenameType": "str",
+    "appendNewline": false,
+    "createDir": false,
+    "overwriteFile": "true",
+    "encoding": "utf8",
+    "x": 1080,
+    "y": 1680,
+    "wires": [
+      [
+        "653f39e063800ccf"
+      ]
+    ]
+  },
+  {
+    "id": "653f39e063800ccf",
+    "type": "exec",
+    "z": "293b64c25a629bf5",
+    "command": "python \"./scripts/predict_fault.py\"",
+    "addpay": "",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "",
+    "winHide": false,
+    "oldrc": false,
+    "name": "Script Fault_detection",
+    "x": 1290,
+    "y": 1680,
+    "wires": [
+      [
+        "64a9a94a6e04b1a5"
+      ],
+      [
+        "609e94e7d97a7afd"
+      ],
+      []
+    ]
+  },
+  {
+    "id": "64a9a94a6e04b1a5",
+    "type": "json",
+    "z": "293b64c25a629bf5",
+    "name": "Parse Prediction Output",
+    "property": "payload",
+    "action": "obj",
+    "pretty": false,
+    "x": 1770,
+    "y": 1640,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "609e94e7d97a7afd",
+    "type": "debug",
+    "z": "293b64c25a629bf5",
+    "name": "Debug Exec Stderr",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1510,
+    "y": 1680,
+    "wires": []
+  },
+  {
+    "id": "d57c7c0b45f355d1",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 2,
+    "width": 10,
+    "height": 1
+  },
+  {
+    "id": "fdeca416265e3bd6",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 3,
+    "width": 10,
+    "height": 1
+  },
+  {
+    "id": "ce31aae2cc8379c0",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 6,
+    "width": 4,
+    "height": 1
+  },
+  {
+    "id": "44ad2e3168f61a88",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 8,
+    "width": 10,
+    "height": 1
+  },
+  {
+    "id": "f4a4f594700ff940",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 10,
+    "width": 10,
+    "height": 1
+  },
+  {
+    "id": "1041ff1367c7b753",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 12,
+    "width": 10,
+    "height": 1
+  },
+  {
+    "id": "5a9014580bf4295f",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 14,
+    "width": 12,
+    "height": 1
+  },
+  {
+    "id": "b335071729c88fcb",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 16,
+    "width": 6,
+    "height": 1
+  },
+  {
+    "id": "8420e764f38a12a2",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 18,
+    "width": 6,
+    "height": 1
+  },
+  {
+    "id": "793e60c55bed0f0c",
+    "type": "ui_spacer",
+    "z": "293b64c25a629bf5",
+    "name": "spacer",
+    "group": "baf712d78ee156f7",
+    "order": 20,
+    "width": 6,
+    "height": 1
+  },
+  {
+    "id": "6d238b1133e531ec",
+    "type": "mqtt-broker",
+    "name": "MQTT",
+    "broker": "localhost:1883",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthRetain": "false",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closeRetain": "false",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willRetain": "false",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "334f844f39753a35",
+    "type": "ui_group",
+    "name": "Thermal & Vibration",
+    "tab": "183fa1963221e6f5",
+    "order": 2,
+    "disp": true,
+    "width": 26,
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "baf712d78ee156f7",
+    "type": "ui_group",
+    "name": "Status & Alerts",
+    "tab": "183fa1963221e6f5",
+    "order": 1,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "84105521f40166b8",
+    "type": "ui_group",
+    "name": "Compressor Status",
+    "tab": "183fa1963221e6f5",
+    "order": 3,
+    "disp": true,
+    "width": 10,
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "678bf5f902c8c97e",
+    "type": "ui_group",
+    "name": "Status & Alerts",
+    "tab": "38baffc45dab4cd6",
+    "order": 1,
+    "disp": true,
+    "width": 12,
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "mysql_config",
+    "type": "MySQLdatabase",
+    "name": "MySQL Database",
+    "host": "localhost",
+    "port": "3306",
+    "db": "compressor_data",
+    "tz": "",
+    "charset": ""
+  },
+  {
+    "id": "183fa1963221e6f5",
+    "type": "ui_tab",
+    "name": "Compressor Monitor1",
+    "icon": "dashboard",
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "38baffc45dab4cd6",
+    "type": "ui_tab",
+    "name": "Compressor Monitor",
+    "icon": "dashboard",
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "0f2e96469bf19c18",
+    "type": "global-config",
+    "env": [],
+    "modules": {
+      "node-red-dashboard": "3.6.5",
+      "node-red-contrib-ui-led": "0.4.11",
+      "node-red-node-mysql": "2.0.0",
+      "node-red-node-email": "3.0.3",
+      "node-red-node-ui-table": "0.4.4"
+    }
+  },
+  {
+    "id": "prepare_sensor_sql",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Parse Sensor JSON and Prepare SQL",
+    "func": "let data = msg.payload;\nif (typeof data === \"string\") {\n    try { data = JSON.parse(data); }\n    catch (err) { node.warn(\"Invalid sensor JSON: \" + err.message); return null; }\n}\nif (!data || typeof data !== \"object\" || Array.isArray(data)) {\n    node.warn(\"Sensor payload must be a JSON object.\");\n    return null;\n}\nconst required = [\"pressure_bar\", \"temperature_c\", \"vibration_rms\", \"power_kw\"];\nif (required.some((key) => data[key] === undefined || data[key] === null || !Number.isFinite(Number(data[key])))) {\n    node.warn(\"Sensor payload is missing a required numeric measurement.\");\n    return null;\n}\nconst allowed = [\n    \"time_min\", \"motor_rpm\", \"pressure_bar\", \"temperature_c\", \"vibration_rms\",\n    \"power_kw\", \"airflow_demand_cfm\", \"torque_nm\", \"noise_db\", \"oilpump_power_w\",\n    \"motor_health\", \"compressor_health\", \"tank_health\", \"blockage_factor\", \"leak_rate_lpm\",\n    \"load_unload_cycles\", \"repair_status\", \"pressure_change_rate\", \"temperature_change_rate\",\n    \"vibration_moving_avg\", \"time_since_last_repair\"\n];\nconst columns = [];\nconst values = [];\nfor (const key of allowed) {\n    if (data[key] === undefined || data[key] === null) continue;\n    const value = Number(data[key]);\n    if (!Number.isFinite(value)) continue;\n    columns.push(key);\n    values.push(value);\n}\nif (!columns.includes(\"time_min\")) {\n    columns.unshift(\"time_min\");\n    values.unshift(Date.now() / 60000);\n}\ncolumns.push(\"timestamp\");\nvalues.push(new Date());\nmsg.topic = `INSERT INTO compressor_data (${columns.map((key) => `\\`${key}\\``).join(\", \")}) VALUES (${columns.map(() => \"?\").join(\", \")})`;\nmsg.payload = values;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 320,
+    "wires": [
+      [
+        "43ac2ecce014a147"
+      ]
+    ]
+  },
+  {
+    "id": "prepare_rul_sql",
+    "type": "function",
+    "z": "293b64c25a629bf5",
+    "name": "Prepare RUL SQL",
+    "func": "const result = msg.payload;\nif (!result || result.error || !Number.isFinite(Number(result.ttf_class))) {\n    node.warn(\"RUL prediction result is missing a numeric ttf_class.\");\n    return null;\n}\nconst prediction = Number(result.ttf_class);\nmsg.topic = \"INSERT INTO rul_predictions (prediction_time, RUL_value, prediction_meta) VALUES (?, ?, ?)\";\nmsg.payload = [new Date(), prediction, JSON.stringify(result)];\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1730,
+    "y": 1800,
+    "wires": [
+      [
+        "a489808cd1ca36da"
+      ]
+    ]
+  }
+]
